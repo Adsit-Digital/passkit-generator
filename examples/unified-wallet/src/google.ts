@@ -1,4 +1,4 @@
-import { GoogleWalletAdapter } from "../../examples/google-wallet/src/GoogleWalletAdapter";
+import { GoogleWalletAdapter } from "./GoogleWalletAdapter";
 import type { CreateEventTicketRequest } from "./types";
 
 export interface GoogleConfig {

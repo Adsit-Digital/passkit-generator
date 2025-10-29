@@ -29,7 +29,9 @@ export async function buildApplePkpass(
     }
   });
 
-  const appleOpts = req.apple || { type: "eventTicket" } as const;
+  const appleOpts = (req.apple ?? { type: "eventTicket" }) as NonNullable<
+    CreateEventTicketRequest["apple"]
+  >;
 
   if (appleOpts.type) {
     pass.type = appleOpts.type;
@@ -45,7 +47,7 @@ export async function buildApplePkpass(
 
   if (appleOpts.localizations) {
     for (const [lang, map] of Object.entries(appleOpts.localizations)) {
-      pass.localize(lang, map);
+      pass.localize(lang, map as Record<string, string>);
     }
   }
 

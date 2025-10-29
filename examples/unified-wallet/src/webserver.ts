@@ -78,7 +78,9 @@ app.post("/wallet/event", async (req, res) => {
 
     return res.status(400).json({ error: "unsupported platform" });
   } catch (err: any) {
-    return res.status(500).json({ error: err?.message || "failed" });
+    const msg = String(err?.message || "failed");
+    const badReq = msg.startsWith("Missing Apple env") || msg.startsWith("Missing Google env");
+    return res.status(badReq ? 400 : 500).json({ error: msg });
   }
 });
 
