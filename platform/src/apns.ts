@@ -1,5 +1,8 @@
-import type { Env } from "./env";
+import type { ApnsPushMessage, Env } from "./env";
 import { apnsConfigured } from "./env";
+
+/** Device tokens per queue message (100-msg batch cap → ~5k-token bursts fit easily). */
+const TOKENS_PER_MESSAGE = 50;
 
 const APNS_HOST = "https://api.push.apple.com";
 /** APNs provider tokens may be reused for up to an hour; refresh at 50 min. */
@@ -88,8 +91,10 @@ export async function pushPassUpdates(env: Env, pushTokens: string[]): Promise<P
 					headers: {
 						authorization: `bearer ${providerToken}`,
 						"apns-topic": env.APPLE_PASS_TYPE_ID,
-						"apns-push-type": "alert",
-						"apns-priority": "10",
+						// Wallet update pushes carry an empty payload. Confirm this
+						// header value against a real device during the R2 smoke test.
+						"apns-push-type": "background",
+						"apns-priority": "5",
 					},
 					body: "{}",
 				});
@@ -115,4 +120,51 @@ export async function pushPassUpdates(env: Env, pushTokens: string[]): Promise<P
 	}
 
 	return result;
+}
+
+/**
+ * Durable fan-out entry point used by request handlers. Splits tokens into
+ * ~50-token messages on the APNs queue so bursts of thousands are delivered
+ * with retries and a dead-letter queue instead of racing the 30s request
+ * budget. Falls back to an inline send when no queue is bound (local dev
+ * without the Queues simulator, or a plan without Queues).
+ */
+export async function enqueuePushUpdates(
+	env: Env,
+	tokens: string[],
+	meta: Omit<ApnsPushMessage, "tokens">,
+): Promise<void> {
+	const unique = [...new Set(tokens)].filter(Boolean);
+	if (unique.length === 0) {
+		return;
+	}
+	if (!env.APNS_QUEUE) {
+		await pushPassUpdates(env, unique);
+		return;
+	}
+	const messages: MessageSendRequest<ApnsPushMessage>[] = [];
+	for (let i = 0; i < unique.length; i += TOKENS_PER_MESSAGE) {
+		messages.push({ body: { ...meta, tokens: unique.slice(i, i + TOKENS_PER_MESSAGE) } });
+	}
+	await env.APNS_QUEUE.sendBatch(messages);
+}
+
+/** Queue consumer: send one batch of pushes. Throwing triggers Queues' retry. */
+export async function consumeApnsBatch(
+	env: Env,
+	batch: MessageBatch<ApnsPushMessage>,
+): Promise<void> {
+	for (const msg of batch.messages) {
+		try {
+			const result = await pushPassUpdates(env, msg.body.tokens);
+			if (result.failed > 0) {
+				msg.retry();
+			} else {
+				msg.ack();
+			}
+		} catch (err) {
+			console.error("APNs batch failed", msg.body.reason, err);
+			msg.retry();
+		}
+	}
 }

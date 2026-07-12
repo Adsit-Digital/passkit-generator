@@ -2,7 +2,8 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { getCoupon, getMerchantById, getPass, redeemPass } from "../db";
 import { currentMerchant } from "../auth";
-import { pushPassUpdates } from "../apns";
+import { enqueuePushUpdates } from "../apns";
+import { track } from "../analytics";
 import { redeemPage } from "../ui";
 
 /**
@@ -47,6 +48,7 @@ redeemRoutes.post("/r/:serial/redeem", async (c) => {
 		return c.redirect(`/r/${pass.serial}`);
 	}
 	await redeemPass(c.env, pass);
+	track(c.env, "redeemed", { merchantId: coupon.merchant_id, couponId: coupon.id });
 
 	// Void the pass on the holder's phone right away.
 	c.executionCtx.waitUntil(
@@ -58,7 +60,10 @@ redeemRoutes.post("/r/:serial/redeem", async (c) => {
 			)
 				.bind(pass.serial)
 				.all<{ token: string }>();
-			await pushPassUpdates(c.env, results.map((r) => r.token));
+			await enqueuePushUpdates(c.env, results.map((r) => r.token), {
+				reason: "redeemed",
+				serial: pass.serial,
+			});
 		})(),
 	);
 	return c.redirect(`/r/${pass.serial}?notice=${encodeURIComponent("Redeemed — enjoy!")}`);

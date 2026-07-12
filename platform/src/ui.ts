@@ -31,6 +31,7 @@ export function layout(title: string, body: string, opts?: { merchant?: Merchant
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <title>${esc(title)} · ${esc(BRAND.name)}</title>
 <style>
 	:root {
@@ -125,7 +126,11 @@ export function landingPage(): string {
 	);
 }
 
-export function authPage(kind: "signup" | "login", error?: string): string {
+export function authPage(
+	kind: "signup" | "login",
+	error?: string,
+	widgetHtml = "",
+): string {
 	const isSignup = kind === "signup";
 	return layout(
 		isSignup ? "Create your account" : "Sign in",
@@ -137,6 +142,7 @@ export function authPage(kind: "signup" | "login", error?: string): string {
 			<input id="email" name="email" type="email" required autocomplete="email">
 			<label for="password">Password</label>
 			<input id="password" name="password" type="password" required minlength="8" autocomplete="${isSignup ? "new-password" : "current-password"}">
+			${isSignup ? `<div style="margin-top:1rem">${widgetHtml}</div>` : ""}
 			<p style="margin-top:1.1rem"><button>${isSignup ? "Create account" : "Sign in"}</button></p>
 		</form>
 		<p class="muted">${

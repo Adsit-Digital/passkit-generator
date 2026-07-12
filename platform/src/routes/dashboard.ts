@@ -11,8 +11,10 @@ import {
 	type CouponInput,
 } from "../db";
 import { createSession, currentMerchant, destroySession, hashPassword, verifyPassword } from "../auth";
-import { pushPassUpdates } from "../apns";
+import { enqueuePushUpdates } from "../apns";
 import { updateGoogleOfferClass } from "../googleWallet";
+import { turnstileWidget, verifyTurnstile } from "../turnstile";
+import { track } from "../analytics";
 import { BRAND } from "../brand";
 import {
 	authPage,
@@ -27,19 +29,31 @@ export const dashboardRoutes = new Hono<{ Bindings: Env }>();
 
 // ---------- auth ----------
 
-dashboardRoutes.get("/signup", (c) => c.html(authPage("signup")));
+dashboardRoutes.get("/signup", (c) =>
+	c.html(authPage("signup", undefined, turnstileWidget(c.env))),
+);
 dashboardRoutes.get("/login", (c) => c.html(authPage("login")));
 
 dashboardRoutes.post("/signup", async (c) => {
 	const form = await c.req.parseBody();
+	const widget = turnstileWidget(c.env);
+	if (!(await verifyTurnstile(c, form["cf-turnstile-response"] as string | undefined))) {
+		return c.html(
+			authPage("signup", "Couldn't verify you're human. Please try again.", widget),
+			400,
+		);
+	}
 	const name = String(form.name ?? "").trim();
 	const email = String(form.email ?? "").trim();
 	const password = String(form.password ?? "");
 	if (!name || !email.includes("@") || password.length < 8) {
-		return c.html(authPage("signup", "Please fill every field (password: 8+ characters)."), 400);
+		return c.html(
+			authPage("signup", "Please fill every field (password: 8+ characters).", widget),
+			400,
+		);
 	}
 	if (await getMerchantByEmail(c.env, email)) {
-		return c.html(authPage("signup", "An account with that email already exists."), 400);
+		return c.html(authPage("signup", "An account with that email already exists.", widget), 400);
 	}
 	const merchant = await createMerchant(c.env, {
 		name,
@@ -52,7 +66,16 @@ dashboardRoutes.post("/signup", async (c) => {
 
 dashboardRoutes.post("/login", async (c) => {
 	const form = await c.req.parseBody();
-	const merchant = await getMerchantByEmail(c.env, String(form.email ?? ""));
+	const email = String(form.email ?? "");
+	// Throttle credential-stuffing per email + client IP.
+	if (c.env.LOGIN_LIMITER) {
+		const ip = c.req.header("cf-connecting-ip") ?? "anon";
+		const { success } = await c.env.LOGIN_LIMITER.limit({ key: `${ip}:${email}` });
+		if (!success) {
+			return c.html(authPage("login", "Too many attempts. Wait a minute and try again."), 429);
+		}
+	}
+	const merchant = await getMerchantByEmail(c.env, email);
 	if (!merchant || !(await verifyPassword(String(form.password ?? ""), merchant.password_hash))) {
 		return c.html(authPage("login", "Email or password didn't match."), 401);
 	}
@@ -205,8 +228,13 @@ dashboardRoutes.post("/dashboard/coupons/:id/edit", async (c) => {
 	c.executionCtx.waitUntil(
 		(async () => {
 			const tokens = await getPushTokensForCoupon(c.env, coupon.id);
-			await pushPassUpdates(c.env, tokens);
+			await enqueuePushUpdates(c.env, tokens, { reason: "coupon_update", couponId: coupon.id });
 			await updateGoogleOfferClass(c.env, merchant, updated);
+			track(c.env, "push_sent", {
+				merchantId: merchant.id,
+				couponId: coupon.id,
+				count: tokens.length,
+			});
 		})(),
 	);
 	return c.redirect(
@@ -224,10 +252,13 @@ dashboardRoutes.post("/dashboard/coupons/:id/push", async (c) => {
 		return c.notFound();
 	}
 	const tokens = await getPushTokensForCoupon(c.env, coupon.id);
-	const result = await pushPassUpdates(c.env, tokens);
+	await enqueuePushUpdates(c.env, tokens, { reason: "coupon_update", couponId: coupon.id });
+	track(c.env, "push_sent", { merchantId: merchant.id, couponId: coupon.id, count: tokens.length });
 	return c.redirect(
 		`/dashboard/coupons/${coupon.id}?notice=${encodeURIComponent(
-			`Update pushed to ${result.sent} device${result.sent === 1 ? "" : "s"}${result.failed ? ` (${result.failed} failed)` : ""}.`,
+			tokens.length
+				? `Update queued for ${tokens.length} device${tokens.length === 1 ? "" : "s"}.`
+				: "No wallets hold this coupon yet.",
 		)}`,
 	);
 });

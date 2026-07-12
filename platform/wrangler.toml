@@ -27,6 +27,55 @@ migrations_dir = "migrations"
 binding = "SESSIONS"
 id = "REPLACE_WITH_KV_NAMESPACE_ID"
 
+# Static assets (marketing CSS, favicon, wallet badge art) served at their path,
+# falling through to the Worker for everything else.
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# APNs push fan-out. Producer enqueues token batches on coupon edit / redeem;
+# the consumer (same Worker) sends the pushes with retries + a dead-letter queue.
+# Requires the Workers Paid plan (which this account has).
+[[queues.producers]]
+queue = "dinnertide-apns"
+binding = "APNS_QUEUE"
+
+[[queues.consumers]]
+queue = "dinnertide-apns"
+max_batch_size = 2          # ~100 device tokens per invocation (50 tokens/message)
+max_batch_timeout = 5
+max_retries = 5
+dead_letter_queue = "dinnertide-apns-dlq"
+
+# Per-merchant usage metrics (claim, pass_issued, registered, push_sent, redeemed).
+[[analytics_engine_datasets]]
+binding = "ANALYTICS"
+dataset = "dinnertide_events"
+
+# Rate limiters (unsafe bindings — the ratelimit binding is GA but still declared
+# under [[unsafe.bindings]] in wrangler config).
+[[unsafe.bindings]]
+name = "LOGIN_LIMITER"
+type = "ratelimit"
+namespace_id = "2001"
+simple = { limit = 10, period = 60 }
+
+[[unsafe.bindings]]
+name = "CLAIM_LIMITER"
+type = "ratelimit"
+namespace_id = "2002"
+simple = { limit = 30, period = 60 }
+
+[[unsafe.bindings]]
+name = "WALLET_LIMITER"
+type = "ratelimit"
+namespace_id = "2003"
+simple = { limit = 60, period = 60 }
+
+# Nightly coupon-expiry sweep (03:00 UTC) and weekly cert-expiry reminder (Mon 09:00 UTC).
+[triggers]
+crons = ["0 3 * * *", "0 9 * * 1"]
+
 [vars]
 # Public origin of the deployed worker, no trailing slash.
 # Used for pass webServiceURL, QR codes and redemption links.
@@ -49,3 +98,7 @@ GOOGLE_ISSUER_ID = ""
 # GOOGLE_SA_EMAIL      Google service account email (Wallet API access)
 # GOOGLE_SA_KEY        Google service account private key (PKCS#8 PEM)
 # SESSION_SECRET       Random string used to derive auth tokens
+# TURNSTILE_SECRET     Cloudflare Turnstile secret key (bot protection)
+
+# Turnstile public site key (non-secret). Leave empty to disable bot checks.
+TURNSTILE_SITE_KEY = ""

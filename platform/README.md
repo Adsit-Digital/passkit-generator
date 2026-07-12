@@ -36,14 +36,31 @@ Non-secret vars live in `wrangler.toml` (`BASE_URL`, `APPLE_PASS_TYPE_ID`, `APPL
 ## Deploy
 
 ```sh
-wrangler d1 create dinnertide-db && wrangler kv namespace create SESSIONS
-# put the returned IDs into wrangler.toml, then:
+# 1. Create the stateful resources (Workers Paid plan required for Queues)
+wrangler d1 create dinnertide-db
+wrangler kv namespace create SESSIONS
+wrangler queues create dinnertide-apns
+wrangler queues create dinnertide-apns-dlq
+# put the returned D1 + KV IDs into wrangler.toml, then:
 pnpm exec wrangler d1 migrations apply dinnertide-db --remote
-wrangler secret put SIGNER_CERT   # ...and the rest
+
+# 2. Secrets (Apple cert chain + APNs key; Google SA; session + Turnstile)
+wrangler secret put SIGNER_CERT   # ...and SIGNER_KEY, WWDR, APNS_KEY, APNS_KEY_ID, etc.
+
+# 3. Ship it
 pnpm deploy
 ```
 
 Set `BASE_URL` to the deployed origin (custom domain recommended) — it's baked into pass `webServiceURL` and QR/redemption links.
+
+## What's running
+
+- **Queues** (`dinnertide-apns` + DLQ): APNs push fan-out with retries. The producer enqueues ~50-token batches on coupon edit / redeem / expiry; the same Worker's consumer sends them. Falls back to inline send if no queue is bound.
+- **Cron Triggers**: `0 3 * * *` archives expired coupons (and pushes a final update); `0 9 * * 1` warns when the Apple signing cert is within 30 days of expiry.
+- **Turnstile**: invisible bot check on signup (set `TURNSTILE_SITE_KEY` + `TURNSTILE_SECRET`; skipped when unset).
+- **Rate limiting**: login (per IP+email), wallet issuance (per IP), Apple device registration (per device).
+- **Analytics Engine** (`dinnertide_events`): `claim`, `pass_issued`, `registered`, `push_sent`, `redeemed`, indexed by merchant.
+- **Static assets** (`./public`): favicon + robots.txt, served before the Worker.
 
 ## How it works
 

@@ -141,13 +141,15 @@ D1 Workers+Hono Paid day one · D2 D1 over DO-SQLite/Postgres · D3 KV sessions 
 ## 5. Roadmap
 
 ### Phase 0 — close out MVP → pilot-ready (1–2 weeks)
-1. **Queues wiring** (D6): move APNs fan-out from `waitUntil` batching (fine at pilot scale, lossy at 5k bursts) to `apns-push` queue + consumer + DLQ.
-2. **Turnstile** on signup + claim actions with server-side `siteverify`.
-3. **Rate-limit bindings** on login, claim issuance, Apple endpoints.
-4. **Workers Static Assets** for CSS/badge art; official Apple/Google wallet badge assets on the claim page.
-5. Cron: nightly expiry sweep (archive + voiding push), weekly cert-expiry reminder.
-6. Analytics Engine events on claim/issue/push/redeem.
-7. **Deploy to the Adsit Digital Cloudflare account:** create D1 + KV, set secrets (Apple cert chain, APNs key, Google SA), custom domain, **production APNs smoke test on a real iPhone (gate R2)**.
+1. ✅ **Queues wiring** (D6): APNs fan-out moved to `dinnertide-apns` queue + consumer + DLQ (`enqueuePushUpdates` / `consumeApnsBatch`), ~50 tokens/message, inline fallback when unbound.
+2. ✅ **Turnstile** on signup with server-side `siteverify` (`turnstile.ts`); no-op until keys set.
+3. ✅ **Rate-limit bindings** on login (IP+email), wallet issuance (IP), Apple device registration (device).
+4. ◑ **Workers Static Assets** wired (`./public`: favicon, robots.txt, served before the Worker). Official Apple/Google wallet **badge artwork** still to be dropped in on the claim page (currently styled buttons) — needs the official downloadable assets.
+5. ✅ Cron: nightly expiry sweep (archive + voiding push), weekly cert-expiry reminder (`cron.ts`), verified via `--test-scheduled`.
+6. ✅ Analytics Engine events on claim/issue/register/push/redeem (`analytics.ts`), merchant-indexed.
+7. ⏳ **Deploy to the Adsit Digital Cloudflare account:** create D1 + KV + queues, set secrets (Apple cert chain, APNs key, Google SA), custom domain, **production APNs smoke test on a real iPhone (gate R2)**. Blocked only on Apple enrollment + go-ahead.
+
+All of items 1–6 typecheck clean and were verified end-to-end in `wrangler dev` (signup → coupon → claim → signed `.pkpass` → device registration → coupon edit enqueue → queue consumer → redeem → cron expiry sweep archives an expired coupon), zero uncaught errors.
 
 ### Phase 1 — validation pilot (weeks 3–10) — per `docs/MARKET_OPPORTUNITY.md` §7
 3–5 restaurants live; measure scan→add, add→redemption, redemptions-per-notification (the industry's missing number). Go/no-go: scan-to-add ≥25%, redemption ≥10%/30 days, ≥3/5 owners willing to pay ≥$29/mo.

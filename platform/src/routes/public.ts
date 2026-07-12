@@ -5,8 +5,22 @@ import { createPass, getCouponBySlugs, getMerchantById } from "../db";
 import { buildApplePass } from "../applePass";
 import { buildGoogleSaveUrl } from "../googleWallet";
 import { claimPage, landingPage } from "../ui";
+import { track } from "../analytics";
 
 export const publicRoutes = new Hono<{ Bindings: Env }>();
+
+/** Throttle a public wallet-issuance endpoint per client IP. Returns true when allowed. */
+async function allowWalletIssue(c: {
+	env: Env;
+	req: { header: (k: string) => string | undefined };
+}): Promise<boolean> {
+	if (!c.env.WALLET_LIMITER) {
+		return true;
+	}
+	const ip = c.req.header("cf-connecting-ip") ?? "anon";
+	const { success } = await c.env.WALLET_LIMITER.limit({ key: ip });
+	return success;
+}
 
 publicRoutes.get("/", (c) => c.html(landingPage()));
 
@@ -25,6 +39,7 @@ publicRoutes.get("/c/:merchantSlug/:couponSlug", async (c) => {
 	}
 	const merchant = await getMerchantById(c.env, coupon.merchant_id);
 	const base = `/c/${c.req.param("merchantSlug")}/${c.req.param("couponSlug")}`;
+	track(c.env, "claim", { merchantId: coupon.merchant_id, couponId: coupon.id });
 	return c.html(
 		claimPage(
 			merchant?.name ?? "",
@@ -40,6 +55,9 @@ publicRoutes.get("/c/:merchantSlug/:couponSlug/apple.pkpass", async (c) => {
 	if (!appleConfigured(c.env)) {
 		return c.text("Apple Wallet is not configured for this deployment.", 503);
 	}
+	if (!(await allowWalletIssue(c))) {
+		return c.text("Too many requests. Please try again in a moment.", 429);
+	}
 	const coupon = await getCouponBySlugs(
 		c.env,
 		c.req.param("merchantSlug"),
@@ -51,6 +69,11 @@ publicRoutes.get("/c/:merchantSlug/:couponSlug/apple.pkpass", async (c) => {
 	const merchant = (await getMerchantById(c.env, coupon.merchant_id))!;
 	const pass = await createPass(c.env, coupon.id, "apple");
 	const pkpass = buildApplePass(c.env, merchant, coupon, pass);
+	track(c.env, "pass_issued", {
+		merchantId: coupon.merchant_id,
+		couponId: coupon.id,
+		platform: "apple",
+	});
 	return c.body(pkpass.getAsBuffer() as unknown as ArrayBuffer, 200, {
 		"content-type": pkpass.mimeType,
 		"content-disposition": `attachment; filename=${pass.serial}.pkpass`,
@@ -63,6 +86,9 @@ publicRoutes.get("/c/:merchantSlug/:couponSlug/google", async (c) => {
 	if (!googleConfigured(c.env)) {
 		return c.text("Google Wallet is not configured for this deployment.", 503);
 	}
+	if (!(await allowWalletIssue(c))) {
+		return c.text("Too many requests. Please try again in a moment.", 429);
+	}
 	const coupon = await getCouponBySlugs(
 		c.env,
 		c.req.param("merchantSlug"),
@@ -74,5 +100,10 @@ publicRoutes.get("/c/:merchantSlug/:couponSlug/google", async (c) => {
 	const merchant = (await getMerchantById(c.env, coupon.merchant_id))!;
 	const pass = await createPass(c.env, coupon.id, "google");
 	const url = await buildGoogleSaveUrl(c.env, merchant, coupon, pass);
+	track(c.env, "pass_issued", {
+		merchantId: coupon.merchant_id,
+		couponId: coupon.id,
+		platform: "google",
+	});
 	return c.redirect(url, 302);
 });

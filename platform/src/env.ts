@@ -1,6 +1,23 @@
+/** One APNs push job: a batch of device tokens to wake for a coupon/pass. */
+export interface ApnsPushMessage {
+	tokens: string[];
+	/** For observability only. */
+	reason: "coupon_update" | "redeemed" | "expired";
+	couponId?: string;
+	serial?: string;
+}
+
 export interface Env {
 	DB: D1Database;
 	SESSIONS: KVNamespace;
+	/** Bound only on the Workers Paid plan; guarded by apnsQueueConfigured(). */
+	APNS_QUEUE?: Queue<ApnsPushMessage>;
+	/** Usage metrics; guarded by analyticsConfigured(). */
+	ANALYTICS?: AnalyticsEngineDataset;
+	/** Rate limiters (unsafe bindings); guarded before use. */
+	LOGIN_LIMITER?: RateLimit;
+	CLAIM_LIMITER?: RateLimit;
+	WALLET_LIMITER?: RateLimit;
 
 	BASE_URL: string;
 	APPLE_PASS_TYPE_ID: string;
@@ -17,6 +34,15 @@ export interface Env {
 	GOOGLE_SA_EMAIL?: string;
 	GOOGLE_SA_KEY?: string;
 	SESSION_SECRET?: string;
+	/** Turnstile secret key; when unset, bot checks are skipped. */
+	TURNSTILE_SECRET?: string;
+	/** Turnstile public site key, injected into pages; empty disables the widget. */
+	TURNSTILE_SITE_KEY?: string;
+}
+
+/** Minimal shape of Cloudflare's rate-limit binding (avoids a types dependency). */
+export interface RateLimit {
+	limit(options: { key: string }): Promise<{ success: boolean }>;
 }
 
 export interface Merchant {
@@ -71,4 +97,8 @@ export function googleConfigured(env: Env): boolean {
 
 export function apnsConfigured(env: Env): boolean {
 	return Boolean(env.APNS_KEY && env.APNS_KEY_ID && env.APPLE_TEAM_ID);
+}
+
+export function turnstileConfigured(env: Env): boolean {
+	return Boolean(env.TURNSTILE_SECRET && env.TURNSTILE_SITE_KEY);
 }

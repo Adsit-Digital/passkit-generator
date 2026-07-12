@@ -3,6 +3,7 @@ import type { Env } from "../env";
 import { appleConfigured } from "../env";
 import { getCoupon, getMerchantById, getPass } from "../db";
 import { buildApplePass } from "../applePass";
+import { track } from "../analytics";
 
 /**
  * Apple Wallet Web Service protocol.
@@ -40,11 +41,17 @@ appleWebService.post(
 		if (!pass) {
 			return c.body(null, 401);
 		}
+		const deviceId = c.req.param("deviceLibraryIdentifier");
+		if (c.env.CLAIM_LIMITER) {
+			const { success } = await c.env.CLAIM_LIMITER.limit({ key: deviceId });
+			if (!success) {
+				return c.body(null, 429);
+			}
+		}
 		const { pushToken } = (await c.req.json().catch(() => ({}))) as { pushToken?: string };
 		if (!pushToken) {
 			return c.body(null, 400);
 		}
-		const deviceId = c.req.param("deviceLibraryIdentifier");
 		const existing = await c.env.DB.prepare(
 			"SELECT 1 FROM apple_registrations WHERE device_library_id = ? AND serial = ?",
 		)
@@ -59,6 +66,14 @@ appleWebService.post(
 				`INSERT OR IGNORE INTO apple_registrations (device_library_id, serial) VALUES (?, ?)`,
 			).bind(deviceId, pass.serial),
 		]);
+		if (!existing) {
+			const coupon = await getCoupon(c.env, pass.coupon_id);
+			track(c.env, "registered", {
+				merchantId: coupon?.merchant_id,
+				couponId: pass.coupon_id,
+				platform: "apple",
+			});
+		}
 		return c.body(null, existing ? 200 : 201);
 	},
 );
