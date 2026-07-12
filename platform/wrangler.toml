@@ -1,4 +1,4 @@
-name = "tablepass"
+name = "currant"
 main = "src/index.ts"
 
 # nodejs_compat is required for passkit-generator (node:crypto Buffer usage via node-forge)
@@ -12,7 +12,7 @@ rules = [
 
 [[d1_databases]]
 binding = "DB"
-database_name = "tablepass-db"
+database_name = "currant-db"
 database_id = "REPLACE_WITH_D1_DATABASE_ID"
 migrations_dir = "migrations"
 
@@ -23,10 +23,10 @@ id = "REPLACE_WITH_KV_NAMESPACE_ID"
 [vars]
 # Public origin of the deployed worker, no trailing slash.
 # Used for pass webServiceURL, QR codes and redemption links.
-BASE_URL = "https://tablepass.example.workers.dev"
+BASE_URL = "https://currant.example.workers.dev"
 
 # Apple pass identity (non-secret parts)
-APPLE_PASS_TYPE_ID = "pass.com.example.tablepass"
+APPLE_PASS_TYPE_ID = "pass.com.example.currant"
 APPLE_TEAM_ID = "REPLACE_WITH_TEAM_ID"
 
 # Google Wallet issuer (non-secret part). Leave empty to disable Google Wallet.

@@ -114,7 +114,9 @@ const URLs = Joi.object<URLs>({
 	accessibilityURL: Joi.string().regex(URL_REGEX),
 	addOnURL: Joi.string().regex(URL_REGEX),
 	bagPolicyURL: Joi.string().regex(URL_REGEX),
-	contactVenueEmail: Joi.string().email(),
+	// `tlds: false` keeps this schema loadable on runtimes without joi's
+	// built-in TLD list (e.g. Cloudflare Workers, browsers).
+	contactVenueEmail: Joi.string().email({ tlds: false }),
 	contactVenuePhoneNumber: Joi.string(),
 	contactVenueWebsite: Joi.string().regex(URL_REGEX),
 	directionsInformationURL: Joi.string().regex(URL_REGEX),
