@@ -1,5 +1,5 @@
 {
-	"name": "currant-platform",
+	"name": "dinnertide-platform",
 	"version": "0.1.0",
 	"private": true,
 	"description": "Digital-wallet coupon platform for restaurants, built on the Cloudflare stack (Workers, D1, KV) and passkit-generator",
@@ -7,8 +7,8 @@
 	"scripts": {
 		"dev": "wrangler dev",
 		"deploy": "wrangler deploy",
-		"db:migrate:local": "wrangler d1 migrations apply currant-db --local",
-		"db:migrate:remote": "wrangler d1 migrations apply currant-db --remote",
+		"db:migrate:local": "wrangler d1 migrations apply dinnertide-db --local",
+		"db:migrate:remote": "wrangler d1 migrations apply dinnertide-db --remote",
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {

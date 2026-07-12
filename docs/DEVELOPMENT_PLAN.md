@@ -1,4 +1,4 @@
-# Currant — Development Plan
+# Dinnertide — Development Plan
 
 **Product:** Restaurant coupon platform on Apple Wallet / Google Wallet (see `docs/BRAND.md`).
 **Stack:** 100% Cloudflare developer platform. **Status:** MVP built in `platform/` and verified end-to-end locally (see §3).
@@ -155,19 +155,25 @@ D1 Workers+Hono Paid day one · D2 D1 over DO-SQLite/Postgres · D3 KV sessions 
 ### Phase 2 — v1 paid launch (only if pilot clears)
 Merchant logo uploads (R2+Images), multi-location + staff roles, Stripe billing ($29/49/79 tiers per BRAND/plan), GitHub Actions CI with migration gating, Secrets Store, AE-backed dashboards, Logpush audit.
 
+**POS integrations — Square first, Toast via partner program.** Goal: a restaurant defines the deal in the POS they already use, it lands in Dinnertide as a draft, and they finish the pass design + wallet push here.
+
+- **Square (first, self-serve):** Square's APIs are open — OAuth per seller, Catalog API exposes `CatalogDiscount`/item objects, and catalog webhooks fire on changes. Flow: merchant clicks "Connect Square" → OAuth → we import their discounts/promos as **draft Dinnertide coupons** (name, amount, dates pre-filled) → they pick colors/copy → publish → wallet push. Webhook keeps drafts in sync when the discount changes in Square. Distribution bonus: listing in the **Square App Marketplace** puts us in front of every Square seller who won't pay for Square Loyalty. Cloudflare fit: OAuth callback + webhook routes on the Worker, tokens encrypted in D1, sync jobs via Queues/Cron.
+- **Toast (second, gated):** Toast's APIs (menus, config, discounts) require acceptance into the **Toast partner integration program** — an application/approval cycle measured in months, not days. Right move: apply once the pilot validates demand, and ship the same import flow when credentialed. Until then, Toast restaurants use manual coupon entry (60 seconds by design).
+- **Boundary (deliberate):** redemption stays in Dinnertide's scan flow in v1. Deep checkout-level redemption inside the POS (pass scan auto-applies the discount at the register) is a Phase 3 exploration — it's where POS vendors guard hardest, and our web redemption already closes the measurement loop.
+
 ### Phase 3 — scale
 Cloudflare for SaaS vanity domains (paid add-on), D1 read replication, dedicated queue-consumer Worker, pass archive to R2.
 
 ## 6. Repo layout
 
 ```
-platform/           Cloudflare Worker app (Currant)
+platform/           Cloudflare Worker app (Dinnertide)
   src/              Hono app: routes/, applePass, apns, googleWallet, auth, db, ui, brand, qr
   migrations/       D1 schema
-  assets/           placeholder pass icons (brand currant color)
+  assets/           placeholder pass icons (brand merlot color)
   wrangler.toml     bindings + vars (secrets via wrangler secret)
 docs/
-  BRAND.md          Brand book v1.0 (Currant)
+  BRAND.md          Brand book v1.0 (Dinnertide)
   DEVELOPMENT_PLAN.md  this file
   MARKET_OPPORTUNITY.md  adversarially-verified market research
 src/                passkit-generator library (1-line Workers-compat fix included)

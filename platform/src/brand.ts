@@ -1,17 +1,17 @@
 /**
- * Central brand tokens, implementing docs/BRAND.md (Brand Book v1.0).
+ * Central brand tokens, implementing docs/BRAND.md (Brand Book v1.1, Dinnertide).
  * Change values here and the whole app (UI + default pass design) follows.
  */
 export const BRAND = {
 	/** Product name shown in UI, passes and page titles. */
-	name: "Currant",
+	name: "Dinnertide",
 	tagline: "Your offer, on their lock screen.",
 	/** Legal/organization name used on Apple passes. */
 	organization: "Adsit Digital",
 
 	// Web UI palette — light theme (dark handled in ui.ts CSS)
 	color: {
-		primary: "#7D2A3A", // currant
+		primary: "#7D2A3A", // merlot
 		primaryInk: "#FAF5EC", // cream
 		accent: "#A8541F", // copper
 		ink: "#241E19",

@@ -1,6 +1,6 @@
-# Currant — wallet coupons for restaurants
+# Dinnertide — wallet coupons for restaurants
 
-The Currant platform Worker: merchant dashboard, diner claim pages, Apple/Google Wallet pass issuance, live pass updates, and redemption tracking. Built with [Hono](https://hono.dev) on Cloudflare Workers + D1 + KV, using this repo's `passkit-generator` for `.pkpass` signing.
+The Dinnertide platform Worker: merchant dashboard, diner claim pages, Apple/Google Wallet pass issuance, live pass updates, and redemption tracking. Built with [Hono](https://hono.dev) on Cloudflare Workers + D1 + KV, using this repo's `passkit-generator` for `.pkpass` signing.
 
 Brand: `docs/BRAND.md` · Architecture & roadmap: `docs/DEVELOPMENT_PLAN.md` · Market research: `docs/MARKET_OPPORTUNITY.md`
 
@@ -10,7 +10,7 @@ Brand: `docs/BRAND.md` · Architecture & roadmap: `docs/DEVELOPMENT_PLAN.md` · 
 pnpm install                       # from repo root
 pnpm --filter passkit-generator build
 cd platform
-pnpm exec wrangler d1 migrations apply currant-db --local
+pnpm exec wrangler d1 migrations apply dinnertide-db --local
 pnpm dev                           # http://localhost:8787
 ```
 
@@ -30,15 +30,15 @@ Non-secret vars live in `wrangler.toml` (`BASE_URL`, `APPLE_PASS_TYPE_ID`, `APPL
 
 ### One-time platform credentials
 
-1. **Apple ($99/yr, once for the whole platform):** Apple Developer Program → Identifiers → create a Pass Type ID (`pass.com.yourdomain.currant`) → create & download its certificate; export cert + key as PEM. Also create an APNs auth key (Keys → new key with APNs enabled). Note your Team ID.
+1. **Apple ($99/yr, once for the whole platform):** Apple Developer Program → Identifiers → create a Pass Type ID (`pass.com.yourdomain.dinnertide`) → create & download its certificate; export cert + key as PEM. Also create an APNs auth key (Keys → new key with APNs enabled). Note your Team ID.
 2. **Google (free):** Google Wallet API console → issuer account → create a service account with Wallet Object Issuer role; request production access.
 
 ## Deploy
 
 ```sh
-wrangler d1 create currant-db && wrangler kv namespace create SESSIONS
+wrangler d1 create dinnertide-db && wrangler kv namespace create SESSIONS
 # put the returned IDs into wrangler.toml, then:
-pnpm exec wrangler d1 migrations apply currant-db --remote
+pnpm exec wrangler d1 migrations apply dinnertide-db --remote
 wrangler secret put SIGNER_CERT   # ...and the rest
 pnpm deploy
 ```
