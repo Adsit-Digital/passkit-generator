@@ -13,6 +13,11 @@ import { buildApplePass } from "../applePass";
  */
 export const appleWebService = new Hono<{ Bindings: Env }>();
 
+/** D1's datetime('now') is "YYYY-MM-DD HH:MM:SS" (UTC); normalize to ISO before parsing. */
+function d1ToDate(d1Timestamp: string): Date {
+	return new Date(d1Timestamp.replace(" ", "T") + "Z");
+}
+
 async function authedPass(c: { env: Env; req: { param: (k: string) => string; header: (k: string) => string | undefined } }) {
 	const serial = c.req.param("serialNumber");
 	const auth = c.req.header("authorization") ?? "";
@@ -110,7 +115,7 @@ appleWebService.get("/v1/passes/:passTypeIdentifier/:serialNumber", async (c) =>
 		return c.body(null, 401);
 	}
 	const modifiedSince = c.req.header("if-modified-since");
-	if (modifiedSince && new Date(pass.updated_at + "Z") <= new Date(modifiedSince)) {
+	if (modifiedSince && d1ToDate(pass.updated_at) <= new Date(modifiedSince)) {
 		return c.body(null, 304);
 	}
 	const coupon = (await getCoupon(c.env, pass.coupon_id))!;
@@ -118,7 +123,7 @@ appleWebService.get("/v1/passes/:passTypeIdentifier/:serialNumber", async (c) =>
 	const pkpass = buildApplePass(c.env, merchant, coupon, pass);
 	return c.body(pkpass.getAsBuffer() as unknown as ArrayBuffer, 200, {
 		"content-type": pkpass.mimeType,
-		"last-modified": new Date(pass.updated_at + "Z").toUTCString(),
+		"last-modified": d1ToDate(pass.updated_at).toUTCString(),
 	});
 });
 

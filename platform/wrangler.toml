@@ -10,6 +10,13 @@ rules = [
   { type = "Data", globs = ["**/*.png"], fallthrough = true }
 ]
 
+# Explicit CPU budget for in-Worker pass signing (see docs/DEVELOPMENT_PLAN.md, risk R1)
+[limits]
+cpu_ms = 30000
+
+[observability]
+enabled = true
+
 [[d1_databases]]
 binding = "DB"
 database_name = "currant-db"
