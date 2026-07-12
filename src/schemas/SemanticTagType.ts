@@ -29,15 +29,71 @@ export const CurrencyAmount = Joi.object<CurrencyAmount>().keys({
  */
 
 export interface EventDateInfo {
-	date: string;
+	date?: string;
 	ignoreTimeComponents?: boolean;
 	timeZone?: string;
+
+	/**
+	 * @iOSVersion 18.1
+	 *
+	 * Indicates that the time was not announced yet.
+	 * Leads to showing "TBA" in the UI when `date` is set.
+	 * Setting `ignoreTimeComponents` to true, has higher priority
+	 * over this property.
+	 *
+	 * When both `date` and `semantics.eventStartDate` are unset,
+	 * `Date: TBA` will be shown in the UI.
+	 */
+	unannounced?: boolean;
+
+	/**
+	 * @iOSVersion 18.1
+	 *
+	 * Indicates that the time of the event has not been determined yet.
+	 * Leads to showing "TBD" in the UI when `date` is set.
+	 * Setting `ignoreTimeComponents` to true, has higher priority
+	 * over this property.
+	 *
+	 * This property has higher priority over `unannounced`.
+	 *
+	 * When both `date` and `semantics.eventStartDate` are unset,
+	 * `Date: TBD` will be shown in the UI.
+	 */
+	undetermined?: boolean;
 }
 
 export const EventDateInfo = Joi.object<EventDateInfo>().keys({
-	date: Joi.string().isoDate().required(),
+	date: Joi.string().isoDate(),
 	ignoreTimeComponents: Joi.boolean(),
 	timeZone: Joi.string(),
+
+	/**
+	 * @iOSVersion 18.1
+	 *
+	 * Indicates that the time was not announced yet.
+	 * Leads to showing "TBA" in the UI when `date` is set.
+	 * Setting `ignoreTimeComponents` to true, has higher priority
+	 * over this property.
+	 *
+	 * When both `date` and `semantics.eventStartDate` are unset,
+	 * `Date: TBA` will be shown in the UI.
+	 */
+	unannounced: Joi.boolean(),
+
+	/**
+	 * @iOSVersion 18.1
+	 *
+	 * Indicates that the time of the event has not been determined yet.
+	 * Leads to showing "TBD" in the UI when `date` is set.
+	 * Setting `ignoreTimeComponents` to true, has higher priority
+	 * over this property.
+	 *
+	 * This property has higher priority over `unannounced`.
+	 *
+	 * When both `date` and `semantics.eventStartDate` are unset,
+	 * `Date: TBD` will be shown in the UI.
+	 */
+	undetermined: Joi.boolean(),
 });
 
 /**

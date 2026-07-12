@@ -1,5 +1,47 @@
 # Changelog
 
+### 3.5.7 (25 Dec 2025)
+
+-   Unlocked possibility to use URI other than http/s for `appLaunchURL` (PR #263)
+
+---
+
+### 3.5.6 (27 Nov 2025)
+
+-   Updated `node-forge` to v1.3.2 to address CVE-2025-12816 (PR #258)
+
+---
+
+### 3.5.5 (31 Oct 2025)
+
+-   Fixed `venuePlaceID` typescript signature, which was marked as mandatory while Joi schema was marking it as optional (PR #256)
+-   Added support to iOS 18.1 semantics fields `EventDateInfo.unannounced` and `EventDateInfo.undetermined`;
+-   Added support to iOS 18.1 top level key `eventLogoText`;
+
+---
+
+### 3.5.3 (31 Oct 2025)
+
+-   Fixed `UpcomingPassInformationEntry["backFields"]`: `backFields` was lowercase by mistake, leading it to its stripping (it is required for the new Poster Event Ticket upcoming events view to appear);
+
+---
+
+### 3.5.2 (15 Oct 2025)
+
+-   Fixed support for Cloudflare workers by disabling tls email validation checks (PR #255)
+
+---
+
+### 3.5.0 (07 Oct 2025)
+
+-   Added support to iOS 26 Changes. Refer to #249 for all the details.
+    -   Added support for preferredStyleSchemes method to boardingPass value and pass type, in order to add the support to the new ✨ Semantic Boarding Passes ✨
+    -   Added new setter and getter upcomingPassInformation to add details with validation;
+    -   Deprecated type and schema Schemas.Field for Schemas.PassFieldContent;
+    -   Set setRelevantDates to set both relevantDate and date in order to support both iOS 18 and iOS 26 – the property got renamed, bringing a breaking change;
+
+---
+
 ### 3.4.0 (28 May 2025)
 
 -   Added support to undocumented feature `stripColor` (PR #245)

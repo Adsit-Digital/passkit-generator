@@ -114,8 +114,11 @@ const URLs = Joi.object<URLs>({
 	accessibilityURL: Joi.string().regex(URL_REGEX),
 	addOnURL: Joi.string().regex(URL_REGEX),
 	bagPolicyURL: Joi.string().regex(URL_REGEX),
-	// `tlds: false` keeps this schema loadable on runtimes without joi's
-	// built-in TLD list (e.g. Cloudflare Workers, browsers).
+	/**
+	 * Joi's email schema validates email TLDs and only allows TLDs that are registered in the IANA Registry.
+	 * This also requires NodeJS runtime to work (even though can be enabled client side, but discouraged)
+	 * Reference - https://github.com/hapijs/joi/issues/2390
+	 */
 	contactVenueEmail: Joi.string().email({ tlds: false }),
 	contactVenuePhoneNumber: Joi.string(),
 	contactVenueWebsite: Joi.string().regex(URL_REGEX),
@@ -200,7 +203,7 @@ export interface UpcomingPassInformationEntry {
 	auxiliaryStoreIdentifiers?: number[];
 
 	/** The fields of information displayed on the details view of the upcoming pass information entry. */
-	backfields?: PassFieldContent[];
+	backFields?: PassFieldContent[];
 
 	/**
 	 * Information about the start and end time of the upcoming pass information entry.
@@ -228,7 +231,7 @@ export interface UpcomingPassInformationEntry {
 
 	/** The semantic, machine-readable metadata about the upcoming pass information entry. */
 	semantics?: Semantics & {
-		venuePlaceID: string;
+		venuePlaceID?: string;
 	};
 
 	/**
@@ -243,7 +246,7 @@ export const UpcomingPassInformationEntry =
 		URLs: URLs,
 		additionalInfoFields: Joi.array().items(PassFieldContent),
 		auxiliaryStoreIdentifiers: Joi.array().items(Joi.number()),
-		backfields: Joi.array().items(PassFieldContent),
+		backFields: Joi.array().items(PassFieldContent),
 		dateInformation: DateInformation,
 		identifier: Joi.string().required(),
 		images: Images,

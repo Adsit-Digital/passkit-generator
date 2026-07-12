@@ -135,7 +135,16 @@ export interface PassProps {
 	stripColor?: string;
 
 	nfc?: NFC;
+
+	/**
+	 * @iOSChange 18
+	 * Use this to also trigger Live Activities
+	 * in poster event ticket passes. At least one
+	 * of "relevantDates", "location" and "beacons"
+	 * must be available to trigger Live Activities.
+	 */
 	beacons?: Beacon[];
+
 	barcodes?: Barcode[];
 
 	/**
@@ -144,9 +153,24 @@ export interface PassProps {
 	 */
 	relevantDate?: string;
 
+	/**
+	 * @iOSVersion 18
+	 * Use this to also trigger Live Activities
+	 * in poster event ticket passes. At least one
+	 * of "relevantDates", "location" and "beacons"
+	 * must be available to trigger Live Activities.
+	 */
 	relevantDates?: RelevantDate[];
 
 	expirationDate?: string;
+
+	/**
+	 * @iOSChange 18
+	 * Use this to also trigger Live Activities
+	 * in poster event ticket passes. At least one
+	 * of "relevantDates", "location" and "beacons"
+	 * must be available to trigger Live Activities.
+	 */
 	locations?: Location[];
 
 	boardingPass?: PassFields & { transitType: TransitType };
@@ -400,6 +424,15 @@ export interface PassProps {
 	auxiliaryStoreIdentifiers?: number[];
 
 	/**
+	 * @iOSVersion 18.1
+	 *
+	 * @description
+	 *
+	 * The text to display next to the logo on posterEventTicket passes.
+	 */
+	eventLogoText?: string;
+
+	/**
 	 * @iOSVersion 26
 	 *
 	 * @description
@@ -606,7 +639,7 @@ export const OverridablePassProps = Joi.object<OverridablePassProps>({
 	logoText: Joi.string(),
 	description: Joi.string(),
 	serialNumber: Joi.string(),
-	appLaunchURL: Joi.string().regex(URL_REGEX),
+	appLaunchURL: Joi.string().uri(),
 	teamIdentifier: Joi.string(),
 	organizationName: Joi.string(),
 	passTypeIdentifier: Joi.string(),
@@ -864,6 +897,13 @@ export const OverridablePassProps = Joi.object<OverridablePassProps>({
 	 * by `associatedStoreIdentifiers`).
 	 */
 	auxiliaryStoreIdentifiers: Joi.array().items(Joi.number()),
+
+	/**
+	 * @iOSVersion 18.1
+	 *
+	 * The text to display next to the logo on posterEventTicket passes.
+	 */
+	eventLogoText: Joi.string(),
 
 	/**
 	 * @iOSVersion 26
