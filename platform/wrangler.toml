@@ -20,12 +20,12 @@ enabled = true
 [[d1_databases]]
 binding = "DB"
 database_name = "dinnertide-db"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_id = "b4d1a256-d441-4636-b7ba-1f59ac254da5"
 migrations_dir = "migrations"
 
 [[kv_namespaces]]
 binding = "SESSIONS"
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
+id = "8a4badee2ad34c8d96189133d55a3a61"
 
 # Static assets (marketing CSS, favicon, wallet badge art) served at their path,
 # falling through to the Worker for everything else.

@@ -147,7 +147,11 @@ D1 Workers+Hono Paid day one · D2 D1 over DO-SQLite/Postgres · D3 KV sessions 
 4. ◑ **Workers Static Assets** wired (`./public`: favicon, robots.txt, served before the Worker). Official Apple/Google wallet **badge artwork** still to be dropped in on the claim page (currently styled buttons) — needs the official downloadable assets.
 5. ✅ Cron: nightly expiry sweep (archive + voiding push), weekly cert-expiry reminder (`cron.ts`), verified via `--test-scheduled`.
 6. ✅ Analytics Engine events on claim/issue/register/push/redeem (`analytics.ts`), merchant-indexed.
-7. ⏳ **Deploy to the Adsit Digital Cloudflare account:** create D1 + KV + queues, set secrets (Apple cert chain, APNs key, Google SA), custom domain, **production APNs smoke test on a real iPhone (gate R2)**. Blocked only on Apple enrollment + go-ahead.
+7. ◑ **Deploy to the Adsit Digital Cloudflare account:**
+   - ✅ D1 (`dinnertide-db`, `b4d1a256…`) and KV (`dinnertide-sessions`, `8a4badee…`) provisioned in the account; IDs wired into `wrangler.toml`.
+   - ✅ Push-button deploy pipeline (`.github/workflows/deploy-dinnertide.yml`): creates queues, applies migrations, deploys — replaces interactive `wrangler login`.
+   - ⏳ **You:** add `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` repo secrets → first deploy brings the dashboard/landing live (wallet issuance gated until secrets set). Then set `BASE_URL` to the real origin.
+   - ⏳ After Apple enrollment: `wrangler secret put` the cert chain + APNs key, then **production APNs smoke test on a real iPhone (gate R2)**.
 
 All of items 1–6 typecheck clean and were verified end-to-end in `wrangler dev` (signup → coupon → claim → signed `.pkpass` → device registration → coupon edit enqueue → queue consumer → redeem → cron expiry sweep archives an expired coupon), zero uncaught errors.
 

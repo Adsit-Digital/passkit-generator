@@ -35,23 +35,45 @@ Non-secret vars live in `wrangler.toml` (`BASE_URL`, `APPLE_PASS_TYPE_ID`, `APPL
 
 ## Deploy
 
+The **D1 database (`dinnertide-db`) and KV namespace (`dinnertide-sessions`) are
+already provisioned** in the Adsit Digital Cloudflare account and their IDs are
+wired into `wrangler.toml`. Deploys run through GitHub Actions
+(`.github/workflows/deploy-dinnertide.yml`) so no interactive `wrangler login`
+is needed.
+
+### One-time setup (enables deploys)
+
+1. Create a Cloudflare API token (My Profile → API Tokens → *Edit Cloudflare
+   Workers* template; it needs Workers Scripts, D1, Queues, and KV edit).
+2. In the GitHub repo: **Settings → Secrets and variables → Actions** add:
+   - `CLOUDFLARE_API_TOKEN` — the token above
+   - `CLOUDFLARE_ACCOUNT_ID` — `34b84c2c053c7aac2c85d8016fc2195d`
+3. Push to the branch (or run the workflow manually). The pipeline creates the
+   queues if missing, applies D1 migrations, and deploys the Worker.
+
+The Worker deploys and runs **without** Apple/Google secrets — the merchant
+dashboard and landing page go live immediately; wallet issuance returns 503 /
+the Google button is disabled until you add the secrets:
+
 ```sh
-# 1. Create the stateful resources (Workers Paid plan required for Queues)
-wrangler d1 create dinnertide-db
-wrangler kv namespace create SESSIONS
-wrangler queues create dinnertide-apns
-wrangler queues create dinnertide-apns-dlq
-# put the returned D1 + KV IDs into wrangler.toml, then:
-pnpm exec wrangler d1 migrations apply dinnertide-db --remote
-
-# 2. Secrets (Apple cert chain + APNs key; Google SA; session + Turnstile)
-wrangler secret put SIGNER_CERT   # ...and SIGNER_KEY, WWDR, APNS_KEY, APNS_KEY_ID, etc.
-
-# 3. Ship it
-pnpm deploy
+# After deploy, add wallet + session secrets (once you have them):
+wrangler secret put SIGNER_CERT   # ...and SIGNER_KEY, WWDR, APNS_KEY, APNS_KEY_ID,
+                                  #    GOOGLE_SA_EMAIL, GOOGLE_SA_KEY, SESSION_SECRET,
+                                  #    TURNSTILE_SECRET
 ```
 
-Set `BASE_URL` to the deployed origin (custom domain recommended) — it's baked into pass `webServiceURL` and QR/redemption links.
+### After the first deploy
+
+Set `BASE_URL` in `wrangler.toml` to the real origin (the assigned
+`https://dinnertide.<subdomain>.workers.dev`, or a custom domain) and redeploy —
+it's baked into pass `webServiceURL` and QR/redemption links, so passes issued
+before it's correct won't receive updates.
+
+### Local deploy (alternative)
+
+If you'd rather deploy from your machine: `wrangler login`, then from `platform/`
+run `wrangler queues create dinnertide-apns && wrangler queues create dinnertide-apns-dlq`,
+`pnpm exec wrangler d1 migrations apply dinnertide-db --remote`, and `pnpm deploy`.
 
 ## What's running
 
