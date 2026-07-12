@@ -1,0 +1,66 @@
+name: Deploy Dinnertide
+
+# Deploys the platform/ Worker to Cloudflare. Runs only once the repo has
+# CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID secrets set (Settings → Secrets
+# and variables → Actions). Until then the preflight job no-ops, so pushes and
+# forks never fail. This replaces the interactive `wrangler login` flow.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/wallet-coupon-platform-op0fe9]
+    paths:
+      - "platform/**"
+      - "src/**"
+      - ".github/workflows/deploy-dinnertide.yml"
+
+concurrency:
+  group: dinnertide-deploy
+  cancel-in-progress: true
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    outputs:
+      configured: ${{ steps.check.outputs.configured }}
+    steps:
+      - id: check
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -n "$TOKEN" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Add CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID repo secrets to enable deploys."
+          fi
+
+  deploy:
+    needs: preflight
+    if: ${{ needs.preflight.outputs.configured == 'true' }}
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+      - run: pnpm install --frozen-lockfile
+      - name: Build passkit-generator library
+        run: pnpm --filter passkit-generator build
+      - name: Ensure queues exist (idempotent)
+        working-directory: platform
+        run: |
+          pnpm exec wrangler queues create dinnertide-apns || echo "apns queue already exists"
+          pnpm exec wrangler queues create dinnertide-apns-dlq || echo "dlq already exists"
+      - name: Apply D1 migrations
+        working-directory: platform
+        run: pnpm exec wrangler d1 migrations apply dinnertide-db --remote
+      - name: Deploy Worker
+        working-directory: platform
+        run: pnpm exec wrangler deploy

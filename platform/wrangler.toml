@@ -1,0 +1,104 @@
+name = "dinnertide"
+main = "src/index.ts"
+
+# nodejs_compat is required for passkit-generator (node:crypto Buffer usage via node-forge)
+compatibility_flags = ["nodejs_compat"]
+compatibility_date = "2024-09-23"
+
+# Allows importing .png pass assets as ArrayBuffer
+rules = [
+  { type = "Data", globs = ["**/*.png"], fallthrough = true }
+]
+
+# Explicit CPU budget for in-Worker pass signing (see docs/DEVELOPMENT_PLAN.md, risk R1)
+[limits]
+cpu_ms = 30000
+
+[observability]
+enabled = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "dinnertide-db"
+database_id = "b4d1a256-d441-4636-b7ba-1f59ac254da5"
+migrations_dir = "migrations"
+
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "8a4badee2ad34c8d96189133d55a3a61"
+
+# Static assets (marketing CSS, favicon, wallet badge art) served at their path,
+# falling through to the Worker for everything else.
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# APNs push fan-out. Producer enqueues token batches on coupon edit / redeem;
+# the consumer (same Worker) sends the pushes with retries + a dead-letter queue.
+# Requires the Workers Paid plan (which this account has).
+[[queues.producers]]
+queue = "dinnertide-apns"
+binding = "APNS_QUEUE"
+
+[[queues.consumers]]
+queue = "dinnertide-apns"
+max_batch_size = 2          # ~100 device tokens per invocation (50 tokens/message)
+max_batch_timeout = 5
+max_retries = 5
+dead_letter_queue = "dinnertide-apns-dlq"
+
+# Per-merchant usage metrics (claim, pass_issued, registered, push_sent, redeemed).
+[[analytics_engine_datasets]]
+binding = "ANALYTICS"
+dataset = "dinnertide_events"
+
+# Rate limiters (unsafe bindings — the ratelimit binding is GA but still declared
+# under [[unsafe.bindings]] in wrangler config).
+[[unsafe.bindings]]
+name = "LOGIN_LIMITER"
+type = "ratelimit"
+namespace_id = "2001"
+simple = { limit = 10, period = 60 }
+
+[[unsafe.bindings]]
+name = "CLAIM_LIMITER"
+type = "ratelimit"
+namespace_id = "2002"
+simple = { limit = 30, period = 60 }
+
+[[unsafe.bindings]]
+name = "WALLET_LIMITER"
+type = "ratelimit"
+namespace_id = "2003"
+simple = { limit = 60, period = 60 }
+
+# Nightly coupon-expiry sweep (03:00 UTC) and weekly cert-expiry reminder (Mon 09:00 UTC).
+[triggers]
+crons = ["0 3 * * *", "0 9 * * 1"]
+
+[vars]
+# Public origin of the deployed worker, no trailing slash.
+# Used for pass webServiceURL, QR codes and redemption links.
+BASE_URL = "https://dinnertide.example.workers.dev"
+
+# Apple pass identity (non-secret parts)
+APPLE_PASS_TYPE_ID = "pass.com.example.dinnertide"
+APPLE_TEAM_ID = "REPLACE_WITH_TEAM_ID"
+
+# Google Wallet issuer (non-secret part). Leave empty to disable Google Wallet.
+GOOGLE_ISSUER_ID = ""
+
+# --- Secrets (set via `wrangler secret put <NAME>`), never in this file ---
+# SIGNER_CERT          Apple pass signing certificate (PEM)
+# SIGNER_KEY           Apple pass signing private key (PEM)
+# SIGNER_PASSPHRASE    Passphrase for SIGNER_KEY (may be empty string)
+# WWDR                 Apple WWDR G4 intermediate certificate (PEM)
+# APNS_KEY             APNs auth key .p8 contents (PEM), for pass update pushes
+# APNS_KEY_ID          Key ID of the APNs auth key
+# GOOGLE_SA_EMAIL      Google service account email (Wallet API access)
+# GOOGLE_SA_KEY        Google service account private key (PKCS#8 PEM)
+# SESSION_SECRET       Random string used to derive auth tokens
+# TURNSTILE_SECRET     Cloudflare Turnstile secret key (bot protection)
+
+# Turnstile public site key (non-secret). Leave empty to disable bot checks.
+TURNSTILE_SITE_KEY = ""

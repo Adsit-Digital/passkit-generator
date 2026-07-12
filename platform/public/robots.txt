@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /$
+Allow: /signup
+Allow: /login
+# Diner claim pages and staff redemption links are single-use and not for indexing.
+Disallow: /c/
+Disallow: /r/
+Disallow: /dashboard
+Disallow: /v1/
