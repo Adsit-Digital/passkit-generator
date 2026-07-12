@@ -10,11 +10,11 @@ export interface ApnsPushMessage {
 export interface Env {
 	DB: D1Database;
 	SESSIONS: KVNamespace;
-	/** Bound only on the Workers Paid plan; guarded by apnsQueueConfigured(). */
+	/** Bound only on the Workers Paid plan; enqueuePushUpdates falls back to inline send when absent. */
 	APNS_QUEUE?: Queue<ApnsPushMessage>;
-	/** Usage metrics; guarded by analyticsConfigured(). */
+	/** Usage metrics; track() is a no-op when absent. */
 	ANALYTICS?: AnalyticsEngineDataset;
-	/** Rate limiters (unsafe bindings); guarded before use. */
+	/** Rate limiters (unsafe bindings); each call site checks for the binding before use. */
 	LOGIN_LIMITER?: RateLimit;
 	CLAIM_LIMITER?: RateLimit;
 	WALLET_LIMITER?: RateLimit;

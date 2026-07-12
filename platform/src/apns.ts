@@ -1,8 +1,10 @@
 import type { ApnsPushMessage, Env } from "./env";
 import { apnsConfigured } from "./env";
 
-/** Device tokens per queue message (100-msg batch cap → ~5k-token bursts fit easily). */
+/** Device tokens per queue message. */
 const TOKENS_PER_MESSAGE = 50;
+/** Cloudflare Queues caps sendBatch() at 100 messages per call. */
+const MESSAGES_PER_SEND = 100;
 
 const APNS_HOST = "https://api.push.apple.com";
 /** APNs provider tokens may be reused for up to an hour; refresh at 50 min. */
@@ -91,10 +93,12 @@ export async function pushPassUpdates(env: Env, pushTokens: string[]): Promise<P
 					headers: {
 						authorization: `bearer ${providerToken}`,
 						"apns-topic": env.APPLE_PASS_TYPE_ID,
-						// Wallet update pushes carry an empty payload. Confirm this
-						// header value against a real device during the R2 smoke test.
-						"apns-push-type": "background",
-						"apns-priority": "5",
+						// Wallet update pushes carry an empty payload and should arrive
+						// promptly (priority 10) so the lock-screen offer updates without
+						// delay. Verify the push-type header on a real device (R2 gate) —
+						// iOS throttles background/priority-5 pushes.
+						"apns-push-type": "alert",
+						"apns-priority": "10",
 					},
 					body: "{}",
 				});
@@ -146,7 +150,10 @@ export async function enqueuePushUpdates(
 	for (let i = 0; i < unique.length; i += TOKENS_PER_MESSAGE) {
 		messages.push({ body: { ...meta, tokens: unique.slice(i, i + TOKENS_PER_MESSAGE) } });
 	}
-	await env.APNS_QUEUE.sendBatch(messages);
+	// sendBatch is capped at 100 messages/call, so chunk large fan-outs.
+	for (let i = 0; i < messages.length; i += MESSAGES_PER_SEND) {
+		await env.APNS_QUEUE.sendBatch(messages.slice(i, i + MESSAGES_PER_SEND));
+	}
 }
 
 /** Queue consumer: send one batch of pushes. Throwing triggers Queues' retry. */

@@ -66,12 +66,16 @@ dashboardRoutes.post("/signup", async (c) => {
 
 dashboardRoutes.post("/login", async (c) => {
 	const form = await c.req.parseBody();
-	const email = String(form.email ?? "");
-	// Throttle credential-stuffing per email + client IP.
+	const email = String(form.email ?? "").toLowerCase();
+	// Throttle both a single IP hammering many accounts (credential stuffing)
+	// and many IPs targeting one account, by limiting on each key independently.
 	if (c.env.LOGIN_LIMITER) {
 		const ip = c.req.header("cf-connecting-ip") ?? "anon";
-		const { success } = await c.env.LOGIN_LIMITER.limit({ key: `${ip}:${email}` });
-		if (!success) {
+		const [byIp, byAccount] = await Promise.all([
+			c.env.LOGIN_LIMITER.limit({ key: `ip:${ip}` }),
+			c.env.LOGIN_LIMITER.limit({ key: `email:${email}` }),
+		]);
+		if (!byIp.success || !byAccount.success) {
 			return c.html(authPage("login", "Too many attempts. Wait a minute and try again."), 429);
 		}
 	}
