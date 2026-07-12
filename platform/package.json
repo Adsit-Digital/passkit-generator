@@ -1,0 +1,25 @@
+{
+	"name": "tablepass-platform",
+	"version": "0.1.0",
+	"private": true,
+	"description": "Digital-wallet coupon platform for restaurants, built on the Cloudflare stack (Workers, D1, KV) and passkit-generator",
+	"type": "module",
+	"scripts": {
+		"dev": "wrangler dev",
+		"deploy": "wrangler deploy",
+		"db:migrate:local": "wrangler d1 migrations apply tablepass-db --local",
+		"db:migrate:remote": "wrangler d1 migrations apply tablepass-db --remote",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"hono": "^4.6.16",
+		"passkit-generator": "workspace:*",
+		"qrcode-generator": "^1.4.4"
+	},
+	"devDependencies": {
+		"@cloudflare/workers-types": "^4.20250109.0",
+		"@types/node": "^20",
+		"typescript": "^5.7.3",
+		"wrangler": "^3.101.0"
+	}
+}

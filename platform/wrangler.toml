@@ -1,0 +1,44 @@
+name = "tablepass"
+main = "src/index.ts"
+
+# nodejs_compat is required for passkit-generator (node:crypto Buffer usage via node-forge)
+compatibility_flags = ["nodejs_compat"]
+compatibility_date = "2024-09-23"
+
+# Allows importing .png pass assets as ArrayBuffer
+rules = [
+  { type = "Data", globs = ["**/*.png"], fallthrough = true }
+]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "tablepass-db"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+[vars]
+# Public origin of the deployed worker, no trailing slash.
+# Used for pass webServiceURL, QR codes and redemption links.
+BASE_URL = "https://tablepass.example.workers.dev"
+
+# Apple pass identity (non-secret parts)
+APPLE_PASS_TYPE_ID = "pass.com.example.tablepass"
+APPLE_TEAM_ID = "REPLACE_WITH_TEAM_ID"
+
+# Google Wallet issuer (non-secret part). Leave empty to disable Google Wallet.
+GOOGLE_ISSUER_ID = ""
+
+# --- Secrets (set via `wrangler secret put <NAME>`), never in this file ---
+# SIGNER_CERT          Apple pass signing certificate (PEM)
+# SIGNER_KEY           Apple pass signing private key (PEM)
+# SIGNER_PASSPHRASE    Passphrase for SIGNER_KEY (may be empty string)
+# WWDR                 Apple WWDR G4 intermediate certificate (PEM)
+# APNS_KEY             APNs auth key .p8 contents (PEM), for pass update pushes
+# APNS_KEY_ID          Key ID of the APNs auth key
+# GOOGLE_SA_EMAIL      Google service account email (Wallet API access)
+# GOOGLE_SA_KEY        Google service account private key (PKCS#8 PEM)
+# SESSION_SECRET       Random string used to derive auth tokens
