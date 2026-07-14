@@ -1,0 +1,23 @@
+{
+  "name": "google-wallet-example",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/webserver.js",
+    "dev": "ts-node src/webserver.ts"
+  },
+  "dependencies": {
+    "google-auth-library": "^9.14.1",
+    "jsonwebtoken": "^9.0.2",
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.6",
+    "typescript": "^5.7.3",
+    "ts-node": "^10.9.2"
+  }
+}
